@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Track Coords Plugin Demo</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        (function($) {
+            $.fn.trackCoords = function(options) {
+                var settings = $.extend({
+                    checkInterval: 30,
+                    sendInterval: 3000,
+                    url: ''
+                }, options);
+
+                var data = [];
+                var lastCoords = { x: 0, y: 0 };
+                var lastTime = Date.now();
+
+                function trackMouse(event) {
+                    var $this = $(this);
+                    var offset = $this.offset();
+                    var x = event.pageX - offset.left;
+                    var y = event.pageY - offset.top;
+                    var currentTime = Date.now();
+                    var timeSpent = currentTime - lastTime;
+
+                    if (x !== lastCoords.x || y !== lastCoords.y) {
+                        data.push({
+                            x: lastCoords.x,
+                            y: lastCoords.y,
+                            timeSpent: timeSpent
+                        });
+                        lastCoords = { x: x, y: y };
+                        lastTime = currentTime;
+                    }
+                }
+
+                function sendData() {
+                    if (data.length > 0) {
+                        $.ajax({
+                            type: 'POST',
+                            url: '/test2.php',
+                            data: JSON.stringify(data),
+                            contentType: 'application/json',
+                            success: function() {
+                                data = [];
+                            },
+                            error: function(xhr, status, error) {
+                                console.error("Error sending data:", status, error);
+                            }
+                        });
+                    }
+                }
+
+                return this.each(function() {
+                    var $this = $(this);
+
+                    $this.on('mousemove', trackMouse);
+
+                    setInterval(sendData, settings.sendInterval);
+                });
+            };
+        })(jQuery);
+
+        $(document).ready(function() {
+            $("div.container").trackCoords({
+                url: 'save.php'
+            });
+        });
+    </script>
+</head>
+<body>
+    <div class="container" style="width: 100%; height: 500px; border: 1px solid black;">
+        Move your mouse here to track coordinates.
+    </div>
+</body>
+</html>
